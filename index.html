@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>legofy</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <style>
+        #c, #v {
+            height: 404px;
+            width: 720px;
+            display: block;
+        }
+        canvas {
+            image-rendering: optimizeSpeed;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: -o-crisp-edges;
+            image-rendering: crisp-edges;
+            -ms-interpolation-mode: nearest-neighbor;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="row">
+        <div class="col-xs-12">
+            <h1>LEGOFY</h1>
+        </div>
+
+        <div class="form-group col-xs-6">
+            <label for="blocks">Set block size</label>
+            <input id="blocks" class="col-" type="range" min="1" max="20" value="4">
+        </div>
+    </div>
+    <video id="v" src="video/720p.mp4" controls loop></video>
+    <canvas id="c"></canvas>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function(event) {
+        var video = document.getElementById('v');
+        var canvas = document.getElementById('c');
+        var context = canvas.getContext('2d');
+
+        var blocks = document.getElementById('blocks');
+        var blockSize = 0;
+        var size = 0;
+        var w = canvas.width * size;
+        var h = canvas.height * size;
+
+        var brick = new Image();
+        brick.src = 'assets/1x1.png';
+
+        var brickCache = document.createElement('canvas');
+        var brickCacheContext = brickCache.getContext('2d');
+
+
+        video.addEventListener('play', function() {
+            canvas.width = brickCache.width = video.videoWidth;
+            canvas.height = brickCache.height = video.videoHeight;
+
+            context.mozImageSmoothingEnabled = false;
+            context.imageSmoothingEnabled = false;
+
+            update(canvas);
+            draw(video, canvas, context);
+        }, false);
+
+
+        blocks.addEventListener('change', function() {
+            update(canvas);
+        })
+
+
+        function update(canvas) {
+            blockSize = blocks.value;
+            size = blockSize * 0.01;
+            w = canvas.width * size
+            h = canvas.height * size
+
+            // update brick overlay cache
+            brickOverlay(canvas, brickCacheContext);
+        }
+
+
+        function draw(video, canvas, context) {
+            if(video.paused || video.ended) return false;
+
+            context.globalCompositeOperation = "source-over";
+            pixelate(video, canvas, context);
+
+            context.globalCompositeOperation = "overlay";
+            context.drawImage(brickCache, 0, 0);
+
+            setTimeout(draw, 20, video, canvas, context);
+        }
+
+
+        function pixelate(video, canvas, context) {
+            // draw original image to the scaled size
+            context.drawImage(video, 0, 0, w, h);
+
+            // then draw that scaled image thumb back to fill canvas
+            // As smoothing is off the result will be pixelated
+            context.drawImage(canvas, 0, 0, w, h, 0, 0, canvas.width, canvas.height);
+        }
+
+
+        function brickOverlay(canvas, brickCacheContext) {
+            // Next draw the brick overlay
+            var y = x = 0;
+            for (var wi = 0; wi < w; wi++) {
+                x = (canvas.width / w) * wi;
+                nw = canvas.width / w;
+                nh = canvas.height / h;
+                brickCacheContext.drawImage(brick, x, y, nh, nw);
+                for (var hi = 0; hi < h; hi++) {
+                    y = (canvas.height / h) * hi;
+                    brickCacheContext.drawImage(brick, x, y, nh, nw);
+                }
+            }
+
+            return brickCache;
+        }
+    });
+</script>
+
+
+</body>
+</html>
