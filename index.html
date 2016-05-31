@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>legofy</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous"> -->
     <style>
         #c, #v {
             height: 404px;
@@ -31,10 +31,11 @@
 
         <div class="form-group col-xs-6">
             <label for="blocks">Set block size</label>
-            <input id="blocks" class="col-" type="range" min="1" max="20" value="4">
+            <input id="blocks" type="range" min="1" max="10" value="3">
+            <input id="blocksValue" type="text" value="0">
         </div>
     </div>
-    <video id="v" src="video/720p.mp4" controls loop></video>
+    <video id="v" src="video/720p.mp4" preload controls loop></video>
     <canvas id="c"></canvas>
 </div>
 
@@ -56,22 +57,30 @@
         var brickCache = document.createElement('canvas');
         var brickCacheContext = brickCache.getContext('2d');
 
+        init();
 
-        video.addEventListener('play', function() {
-            canvas.width = brickCache.width = video.videoWidth;
-            canvas.height = brickCache.height = video.videoHeight;
+        function init() {
+            blocks.addEventListener('change', function() {
+                update(canvas);
+            });
 
-            context.mozImageSmoothingEnabled = false;
-            context.imageSmoothingEnabled = false;
+            video.addEventListener('play', function() {
+                update(canvas);
+                draw(video, canvas, context);
+            }, false);
 
-            update(canvas);
-            draw(video, canvas, context);
-        }, false);
+            video.addEventListener('loadeddata', function() {
+                canvas.width = brickCache.width = video.videoWidth;
+                canvas.height = brickCache.height = video.videoHeight;
 
+                // Disable smoothing to generate the pixel effect when scaling
+                context.mozImageSmoothingEnabled = false;
+                context.imageSmoothingEnabled = false;
 
-        blocks.addEventListener('change', function() {
-            update(canvas);
-        })
+                update(canvas);
+                draw(video, canvas, context);
+            });
+        }
 
 
         function update(canvas) {
@@ -80,20 +89,21 @@
             w = canvas.width * size
             h = canvas.height * size
 
+            document.getElementById('blocksValue').value = blocks.value;
             // update brick overlay cache
-            brickOverlay(canvas, brickCacheContext);
+            drawBrickOverlay(canvas, brickCacheContext);
         }
 
 
         function draw(video, canvas, context) {
-            if(video.paused || video.ended) return false;
-
+            // Set the according composit setting as we draw onto our canvas
             context.globalCompositeOperation = "source-over";
             pixelate(video, canvas, context);
 
             context.globalCompositeOperation = "overlay";
             context.drawImage(brickCache, 0, 0);
 
+            // Set a 20 ms timeout. Should maybe be changed to request animation frame
             setTimeout(draw, 20, video, canvas, context);
         }
 
@@ -108,13 +118,16 @@
         }
 
 
-        function brickOverlay(canvas, brickCacheContext) {
-            // Next draw the brick overlay
+        function drawBrickOverlay(canvas, brickCacheContext) {
+            // Draw the brick overlay
             var y = x = 0;
             for (var wi = 0; wi < w; wi++) {
                 x = (canvas.width / w) * wi;
                 nw = canvas.width / w;
                 nh = canvas.height / h;
+
+                // Draw the bricks to the cache layer so we dont need to rerender
+                // this part again and again
                 brickCacheContext.drawImage(brick, x, y, nh, nw);
                 for (var hi = 0; hi < h; hi++) {
                     y = (canvas.height / h) * hi;
